@@ -22,6 +22,8 @@ use std::env;
 use std::fs;
 use std::iter::Iterator;
 use std::path::Path;
+use std::fs::File;
+use std::io::Write;
 
 fn make_sp() {
     let logger = slog::Logger::root(Discard, o!());
@@ -152,6 +154,12 @@ fn test_golden(testname: &str) {
         let exp = golden.next().unwrap();
         println!("  expected:");
         test.display_output(exp.chunks_exact(4).map(BigEndian::read_u32));
+        let lognamebuf = tomlname.with_extension(&t.name);
+        let logname = lognamebuf.to_str().expect("something went wrong").split("/");
+        let x = logname.last().expect("something went wrong!");
+        let path = format!("C:\\Users\\dillon\\{}.log", x);
+        print!("{}\n", path);
+        let mut output = File::create(path).expect("unable to open file");
 
         // Emulate the microcode
         {
@@ -161,8 +169,18 @@ fn test_golden(testname: &str) {
 
             let cpu = RSPCPU::get_mut();
             while main_bus.read::<u32>(0x0404_0010) & 1 == 0 {
+                for i in 0..32 {
+                    for b in 0..16 {
+                        write!(output, "{:02X}", cpu.cop2.ctx().vreg(i).byte(b));
+                    }
+                    write!(output, " ");
+                }
+                for i in 0..32 {
+                    write!(output, "{:08X} ", cpu.ctx().regs[i]);
+                }
+                write!(output, "\n");
                 let clock = cpu.ctx().clock;
-                cpu.run(clock + 1000, &Tracer::null()).unwrap();
+                cpu.run(clock + 1, &Tracer::null()).unwrap();
             }
         }
 

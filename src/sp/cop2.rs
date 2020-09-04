@@ -22,10 +22,10 @@ use std::arch::x86_64::*;
 // Kept as little endian so that it's easier to directly load into SSE registers
 #[derive(Debug, Default, Copy, Clone, Serialize, Deserialize)]
 #[repr(align(16))]
-struct VectorReg([u8; 16]);
+pub struct VectorReg([u8; 16]);
 
 impl VectorReg {
-    fn byte(&self, idx: usize) -> u8 {
+    pub fn byte(&self, idx: usize) -> u8 {
         self.0[15 - idx]
     }
     fn setbyte(&mut self, idx: usize, val: u8) {
@@ -55,7 +55,7 @@ impl VectorReg {
 }
 
 #[derive(Copy, Clone, Default, Serialize, Deserialize)]
-struct SpCop2Context {
+pub struct SpCop2Context {
     vregs: [VectorReg; 32],
     accum: [VectorReg; 3],
     vco_carry: VectorReg,
@@ -81,6 +81,10 @@ impl SpCop2 {
     pub const REG_ACCUM_MD: usize = 36;
     pub const REG_ACCUM_HI: usize = 37;
 
+    pub fn ctx(&self) -> &SpCop2Context {
+        &self.ctx
+    }
+
     pub fn new(name: &str, logger: slog::Logger) -> Result<SpCop2> {
         Ok(SpCop2 {
             name: name.to_owned(),
@@ -100,6 +104,11 @@ impl SpCop2 {
 }
 
 impl SpCop2Context {
+
+    pub fn vreg(&self, v: usize) -> &VectorReg {
+        &self.vregs[v]
+    }
+
     fn vce(&self) -> u8 {
         let mut res = 0u8;
         for i in 0..8 {
