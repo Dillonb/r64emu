@@ -16,6 +16,7 @@ use emu::dbg::Tracer;
 use r64emu::dp::Dp;
 use r64emu::r4300::R4300;
 use r64emu::sp::{Sp, RSPCPU};
+use r64emu::sp::cop2::VectorReg;
 use slog::Discard;
 use std::borrow;
 use std::env;
@@ -112,6 +113,13 @@ impl Testsuite {
     }
 }
 
+fn write_vectorreg(mut output: &File, reg: &VectorReg) {
+    for b in 0..16 {
+        write!(output, "{:02X}", reg.byte(b));
+    }
+    write!(output, " ");
+}
+
 fn test_golden(testname: &str) {
     let path = env::current_dir().unwrap();
     println!("The current directory is {}", path.display());
@@ -157,7 +165,7 @@ fn test_golden(testname: &str) {
         let lognamebuf = tomlname.with_extension(&t.name);
         let logname = lognamebuf.to_str().expect("something went wrong").split("/");
         let x = logname.last().expect("something went wrong!");
-        let path = format!("C:\\Users\\dillon\\{}.log", x);
+        let path = format!("C:\\Users\\dillon\\test_output\\{}.log", x);
         print!("{}\n", path);
         let mut output = File::create(path).expect("unable to open file");
 
@@ -170,13 +178,29 @@ fn test_golden(testname: &str) {
             let cpu = RSPCPU::get_mut();
             while main_bus.read::<u32>(0x0404_0010) & 1 == 0 {
                 for i in 0..32 {
-                    for b in 0..16 {
-                        write!(output, "{:02X}", cpu.cop2.ctx().vreg(i).byte(b));
-                    }
-                    write!(output, " ");
+                    write_vectorreg(&output, cpu.cop2.ctx().vreg(i));
                 }
+                write_vectorreg(&output, cpu.cop2.ctx().acc(0));
+                write_vectorreg(&output, cpu.cop2.ctx().acc(1));
+                write_vectorreg(&output, cpu.cop2.ctx().acc(2));
+
+                write!(output, "{:04X} ", cpu.cop2.ctx().vco());
+                write!(output, "{:02X} ", cpu.cop2.ctx().vce());
+                write!(output, "{:04X} ", cpu.cop2.ctx().vcc());
+
+                match cpu.cop2.ctx().divin() {
+                    None => write!(output, "0 0000 ").expect("aaa"),
+                    Some(v) => write!(output, "1 {:04X} ", v).expect("aaa"),
+                }
+
+                write!(output, "{:04X} ", cpu.cop2.ctx().divout());
+
                 for i in 0..32 {
-                    write!(output, "{:08X} ", cpu.ctx().regs[i]);
+                    let reg: u64 = cpu.ctx().regs[i];
+                    write!(output, "{:08X}", reg & 0xFFFFFFFF);
+                    if (i != 31) {
+                        write!(output, " ");
+                    }
                 }
                 write!(output, "\n");
                 let clock = cpu.ctx().clock;

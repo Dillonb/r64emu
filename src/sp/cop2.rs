@@ -109,7 +109,11 @@ impl SpCop2Context {
         &self.vregs[v]
     }
 
-    fn vce(&self) -> u8 {
+    pub fn acc(&self, a: usize) -> &VectorReg {
+        &self.accum[a]
+    }
+
+    pub fn vce(&self) -> u8 {
         let mut res = 0u8;
         for i in 0..8 {
             res |= ((self.vce.lane(i) & 1) << i) as u8;
@@ -123,7 +127,7 @@ impl SpCop2Context {
         }
     }
 
-    fn vcc(&self) -> u16 {
+    pub fn vcc(&self) -> u16 {
         let mut res = 0u16;
         for i in 0..8 {
             res |= (self.vcc_normal.lane(i) & 1) << i;
@@ -142,7 +146,7 @@ impl SpCop2Context {
         }
     }
 
-    fn vco(&self) -> u16 {
+    pub fn vco(&self) -> u16 {
         let mut res = 0u16;
         for i in 0..8 {
             res |= (self.vco_carry.lane(i) & 1) << i;
@@ -160,6 +164,14 @@ impl SpCop2Context {
                 .setlane(i, if carry != 0 { 0xFFFF } else { 0 });
             self.vco_ne.setlane(i, if ne != 0 { 0xFFFF } else { 0 });
         }
+    }
+
+    pub fn divin(&self) -> Option<u16> {
+        self.div_in.map(|x| (x >> 16) as u16)
+    }
+
+    pub fn divout(&self) -> u16 {
+        (self.div_out >> 16) as u16
     }
 }
 
